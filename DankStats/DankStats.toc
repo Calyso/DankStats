@@ -2,7 +2,7 @@
 ## Title: DankStats
 ## Notes: Shows each equipped item's stats next to its slot on the character sheet, with an enchant badge (green "E" / red "E") drawn on each slot icon.
 ## Author: Caly-Zul'jin
-## Version: 1.0
+## Version: 1.0.1
 ## Category: Character
 
 DankStats.lua

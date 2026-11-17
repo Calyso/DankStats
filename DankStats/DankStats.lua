@@ -8,8 +8,9 @@
 --   * C_Item / GetItemInfo fallbacks
 --
 -- Slash commands:
---   /ds          refresh the display
---   /ds debug    print the raw tooltip lines of the ranged slot
+--   /ds            refresh the display
+--   /ds debug      print the raw tooltip lines of the ranged slot
+--   /ds version    print the current addon version
 --============================================================================
 
 local addonName, ns = ...
@@ -369,6 +370,42 @@ local function CreateSlotLabels()
     end
 end
 
+---------------------------------------------------------------------------
+-- Ranged slot (slot 18) is class-dependent.
+--
+-- On classic/Forever-style clients druids and shamans do NOT put a bow,
+-- crossbow, or gun in this slot:
+--   * Druids  -> a Relic
+--   * Shamans -> a Totem
+-- Relics and totems cannot be enchanted, so we must never flag those slots
+-- as "needs an enchant" (that would show a bogus red "E"). For every other
+-- class the slot holds a ranged weapon (bow / crossbow / gun) that CAN be
+-- enchanted, so the badge behaves exactly as before for them.
+---------------------------------------------------------------------------
+local function IsDruidOrShaman()
+    local class
+    if UnitClass then
+        -- UnitClass returns: localizedName, englishName, classID
+        class = select(2, UnitClass("player"))
+    end
+    if not class and UnitClassBase then
+        class = select(2, UnitClassBase("player"))
+    end
+    if not class then
+        return false
+    end
+    class = class:upper()
+    return class == "DRUID" or class == "SHAMAN"
+end
+
+-- Returns the effective "enchantable" rule for a given slot name.
+local function EffectiveEnchantable(slotName, baseRule)
+    if slotName == "CharacterRangedSlot" and IsDruidOrShaman() then
+        return false
+    end
+    return baseRule
+end
+
 local function UpdateAllStats()
     if not CharacterFrame or not CharacterFrame:IsShown() then
         return false
@@ -376,8 +413,8 @@ local function UpdateAllStats()
 
     CreateSlotLabels()
 
-    for _, data in pairs(slotLabels) do
-        local text, state = GetSlotStatText(data.slotID, data.enchantable)
+    for name, data in pairs(slotLabels) do
+        local text, state = GetSlotStatText(data.slotID, EffectiveEnchantable(name, data.enchantable))
         data.fontString:SetText(text)
 
         if data.badge then
@@ -417,8 +454,15 @@ end
 ---------------------------------------------------------------------------
 -- Slash commands
 ---------------------------------------------------------------------------
+local ADDON_VERSION = "1.0.1"
+
 SLASH_DANKSTATS1 = "/ds"
 SlashCmdList["DANKSTATS"] = function(msg)
+    if msg == "version" then
+        print("|cff33ff99DankStats |r version " .. ADDON_VERSION)
+        return
+    end
+
     if msg == "debug" then
         print("|cff33ff99DankStats Ranged Tooltip Lines:|r")
         for i, lineData in ipairs(GetTooltipLines(18)) do
